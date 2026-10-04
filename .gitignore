@@ -19,3 +19,6 @@ samples/evidence.json
 # OS
 .DS_Store
 Thumbs.db
+# Generated investigation reports
+samples/*.html
+samples/*.json

@@ -7,6 +7,7 @@ from backend.core.feature_engineering import build_network_features
 from backend.core.risk_engine import calculate_event_risk
 from backend.core.timeline import build_timeline
 from backend.core.mitre_mapper import map_evidence_to_mitre
+from backend.core.severity import calculate_severity
 
 
 MODEL_PATH = "models/threat_classifier.joblib"
@@ -15,17 +16,26 @@ MODEL_PATH = "models/threat_classifier.joblib"
 def investigate_pcap(file_path: str) -> dict:
     """Run the complete forensic and AI investigation."""
 
+    # ---------------------------------------------------------
+    # 1. Extract network evidence from the PCAP
+    # ---------------------------------------------------------
     evidence = analyze_pcap(file_path)
 
-    # Deterministic cybersecurity analysis
+    # ---------------------------------------------------------
+    # 2. Deterministic cybersecurity analysis
+    # ---------------------------------------------------------
     findings = detect_iocs(evidence)
 
-    # AI anomaly analysis
+    # ---------------------------------------------------------
+    # 3. AI anomaly analysis
+    # ---------------------------------------------------------
     ai_detector = AnomalyDetector()
     ai_detector.fit(evidence)
     anomalies = ai_detector.predict(evidence)
 
-    # Load the pre-trained supervised threat classifier.
+    # ---------------------------------------------------------
+    # 4. Load the pre-trained supervised threat classifier
+    # ---------------------------------------------------------
     trained_model = joblib.load(MODEL_PATH)
 
     features = build_network_features(evidence)
@@ -49,8 +59,9 @@ def investigate_pcap(file_path: str) -> dict:
             ),
         })
 
-    # Build event-level risk scores by correlating
-    # deterministic findings and AI results.
+    # ---------------------------------------------------------
+    # 5. Calculate event-level risk scores
+    # ---------------------------------------------------------
     event_risk = []
 
     for index, event in enumerate(evidence):
@@ -93,6 +104,9 @@ def investigate_pcap(file_path: str) -> dict:
             ],
         })
 
+    # ---------------------------------------------------------
+    # 6. Calculate overall risk score
+    # ---------------------------------------------------------
     maximum_event_risk = max(
         (
             result["risk_score"]
@@ -101,13 +115,26 @@ def investigate_pcap(file_path: str) -> dict:
         default=0,
     )
 
-    # Reconstruct the chronological forensic timeline.
+    # ---------------------------------------------------------
+    # 7. Convert risk score into severity
+    # ---------------------------------------------------------
+    overall_severity = calculate_severity(
+        maximum_event_risk
+    )
+
+    # ---------------------------------------------------------
+    # 8. Reconstruct chronological forensic timeline
+    # ---------------------------------------------------------
     timeline = build_timeline(evidence)
 
-    # Map observable network behaviors to potential
-    # MITRE ATT&CK techniques.
+    # ---------------------------------------------------------
+    # 9. Map observable behavior to potential MITRE ATT&CK
+    # ---------------------------------------------------------
     mitre_attack = map_evidence_to_mitre(evidence)
 
+    # ---------------------------------------------------------
+    # 10. Return complete investigation report
+    # ---------------------------------------------------------
     return {
         "evidence": evidence,
         "findings": findings,
@@ -116,22 +143,28 @@ def investigate_pcap(file_path: str) -> dict:
         "event_risk": event_risk,
         "timeline": timeline,
         "mitre_attack": mitre_attack,
+
         "summary": {
             "packets_analyzed": len(evidence),
+
             "findings_detected": len(findings),
+
             "ai_anomalies_detected": int(
                 sum(
                     result["is_anomaly"]
                     for result in anomalies
                 )
             ),
+
             "threats_classified": int(
                 sum(
                     result["is_threat"]
                     for result in classifications
                 )
             ),
+
             "timeline_events": len(timeline),
+
             "mitre_techniques_observed": len(
                 {
                     technique["technique_id"]
@@ -139,6 +172,9 @@ def investigate_pcap(file_path: str) -> dict:
                     for technique in result["techniques"]
                 }
             ),
+
             "maximum_risk_score": maximum_event_risk,
+
+            "severity": overall_severity,
         },
     }
