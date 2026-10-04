@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Virtual environment
+.venv/
+
+# Testing
+.pytest_cache/
+.coverage
+
+# IDE
+.vscode/
+
+# Generated forensic output
+samples/evidence.json
+
+# OS
+.DS_Store
+Thumbs.db
