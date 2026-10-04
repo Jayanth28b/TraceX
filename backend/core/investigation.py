@@ -8,6 +8,10 @@ from backend.core.risk_engine import calculate_event_risk
 from backend.core.timeline import build_timeline
 from backend.core.mitre_mapper import map_evidence_to_mitre
 from backend.core.severity import calculate_severity
+from backend.core.attack_stage import (
+    detect_attack_stages,
+    detect_behavioral_attack_stages,
+)
 
 
 MODEL_PATH = "models/threat_classifier.joblib"
@@ -116,7 +120,7 @@ def investigate_pcap(file_path: str) -> dict:
     )
 
     # ---------------------------------------------------------
-    # 7. Convert risk score into severity
+    # 7. Calculate overall severity
     # ---------------------------------------------------------
     overall_severity = calculate_severity(
         maximum_event_risk
@@ -133,7 +137,28 @@ def investigate_pcap(file_path: str) -> dict:
     mitre_attack = map_evidence_to_mitre(evidence)
 
     # ---------------------------------------------------------
-    # 10. Return complete investigation report
+    # 10. Detect event-level attack stages
+    # ---------------------------------------------------------
+    attack_stages = []
+
+    for event in evidence:
+        stages = detect_attack_stages(event)
+
+        if stages:
+            attack_stages.append({
+                "event": event,
+                "stages": stages,
+            })
+
+    # ---------------------------------------------------------
+    # 11. Detect behavioral attack stages
+    # ---------------------------------------------------------
+    behavioral_attack_stages = (
+        detect_behavioral_attack_stages(evidence)
+    )
+
+    # ---------------------------------------------------------
+    # 12. Return complete investigation report
     # ---------------------------------------------------------
     return {
         "evidence": evidence,
@@ -143,6 +168,8 @@ def investigate_pcap(file_path: str) -> dict:
         "event_risk": event_risk,
         "timeline": timeline,
         "mitre_attack": mitre_attack,
+        "attack_stages": attack_stages,
+        "behavioral_attack_stages": behavioral_attack_stages,
 
         "summary": {
             "packets_analyzed": len(evidence),
@@ -171,6 +198,12 @@ def investigate_pcap(file_path: str) -> dict:
                     for result in mitre_attack
                     for technique in result["techniques"]
                 }
+            ),
+
+            "attack_stage_events": len(attack_stages),
+
+            "behavioral_attack_patterns": len(
+                behavioral_attack_stages
             ),
 
             "maximum_risk_score": maximum_event_risk,
