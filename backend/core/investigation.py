@@ -5,6 +5,7 @@ from backend.core.ioc_detector import detect_iocs
 from backend.core.ai_anomaly_detector import AnomalyDetector
 from backend.core.feature_engineering import build_network_features
 from backend.core.risk_engine import calculate_event_risk
+from backend.core.timeline import build_timeline
 
 
 MODEL_PATH = "models/threat_classifier.joblib"
@@ -99,12 +100,16 @@ def investigate_pcap(file_path: str) -> dict:
         default=0,
     )
 
+    # Reconstruct the chronological forensic timeline.
+    timeline = build_timeline(evidence)
+
     return {
         "evidence": evidence,
         "findings": findings,
         "ai_analysis": anomalies,
         "threat_classification": classifications,
         "event_risk": event_risk,
+        "timeline": timeline,
         "summary": {
             "packets_analyzed": len(evidence),
             "findings_detected": len(findings),
@@ -120,6 +125,7 @@ def investigate_pcap(file_path: str) -> dict:
                     for result in classifications
                 )
             ),
+            "timeline_events": len(timeline),
             "maximum_risk_score": maximum_event_risk,
         },
     }
