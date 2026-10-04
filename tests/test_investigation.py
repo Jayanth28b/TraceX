@@ -6,4 +6,6 @@ def test_investigate_sample_pcap():
 
     assert report["summary"]["packets_analyzed"] == 3
     assert report["summary"]["findings_detected"] > 0
-    assert report["summary"]["maximum_risk_score"] > 0
+    assert "ai_analysis" in report
+    assert len(report["ai_analysis"]) == 3
+    assert "is_anomaly" in report["ai_analysis"][0]
