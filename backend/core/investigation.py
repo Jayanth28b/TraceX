@@ -12,6 +12,7 @@ from backend.core.attack_stage import (
     detect_attack_stages,
     detect_behavioral_attack_stages,
 )
+from backend.core.correlation_engine import correlate_event
 
 
 MODEL_PATH = "models/threat_classifier.joblib"
@@ -158,7 +159,27 @@ def investigate_pcap(file_path: str) -> dict:
     )
 
     # ---------------------------------------------------------
-    # 12. Return complete investigation report
+    # 12. Correlate all event-level investigation signals
+    # ---------------------------------------------------------
+    correlated_findings = []
+
+    for event, risk_result in zip(
+        evidence,
+        event_risk,
+    ):
+        correlated_finding = correlate_event(
+            event=event,
+            event_risk=risk_result,
+            attack_stages=attack_stages,
+            mitre_techniques=mitre_attack,
+        )
+
+        correlated_findings.append(
+            correlated_finding
+        )
+
+    # ---------------------------------------------------------
+    # 13. Return complete investigation report
     # ---------------------------------------------------------
     return {
         "evidence": evidence,
@@ -170,6 +191,7 @@ def investigate_pcap(file_path: str) -> dict:
         "mitre_attack": mitre_attack,
         "attack_stages": attack_stages,
         "behavioral_attack_stages": behavioral_attack_stages,
+        "correlated_findings": correlated_findings,
 
         "summary": {
             "packets_analyzed": len(evidence),
@@ -200,10 +222,16 @@ def investigate_pcap(file_path: str) -> dict:
                 }
             ),
 
-            "attack_stage_events": len(attack_stages),
+            "attack_stage_events": len(
+                attack_stages
+            ),
 
             "behavioral_attack_patterns": len(
                 behavioral_attack_stages
+            ),
+
+            "correlated_findings": len(
+                correlated_findings
             ),
 
             "maximum_risk_score": maximum_event_risk,
