@@ -6,6 +6,7 @@ from backend.core.ai_anomaly_detector import AnomalyDetector
 from backend.core.feature_engineering import build_network_features
 from backend.core.risk_engine import calculate_event_risk
 from backend.core.timeline import build_timeline
+from backend.core.mitre_mapper import map_evidence_to_mitre
 
 
 MODEL_PATH = "models/threat_classifier.joblib"
@@ -103,6 +104,10 @@ def investigate_pcap(file_path: str) -> dict:
     # Reconstruct the chronological forensic timeline.
     timeline = build_timeline(evidence)
 
+    # Map observable network behaviors to potential
+    # MITRE ATT&CK techniques.
+    mitre_attack = map_evidence_to_mitre(evidence)
+
     return {
         "evidence": evidence,
         "findings": findings,
@@ -110,6 +115,7 @@ def investigate_pcap(file_path: str) -> dict:
         "threat_classification": classifications,
         "event_risk": event_risk,
         "timeline": timeline,
+        "mitre_attack": mitre_attack,
         "summary": {
             "packets_analyzed": len(evidence),
             "findings_detected": len(findings),
@@ -126,6 +132,13 @@ def investigate_pcap(file_path: str) -> dict:
                 )
             ),
             "timeline_events": len(timeline),
+            "mitre_techniques_observed": len(
+                {
+                    technique["technique_id"]
+                    for result in mitre_attack
+                    for technique in result["techniques"]
+                }
+            ),
             "maximum_risk_score": maximum_event_risk,
         },
     }
